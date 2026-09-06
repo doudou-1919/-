@@ -103,17 +103,16 @@ pnpm test               # 先 build 再跑 SSR 冒烟测试
 ## 6. 已发布地址、GitHub 地址与分支状态
 
 - **已发布地址**：由 OpenAI Codex Sites 托管；请以 ChatGPT/Codex 中该项目的最新发布为准（旧首版曾发布，本轮完成后需**重新发布**以替换旧版）。
-- **GitHub**：`https://github.com/qingdou-1919/-.git`（本机已配置 `origin`）。
+- **GitHub**：`https://github.com/doudou-1919/-.git`（SSH：`git@github.com:doudou-1919/-.git`；用户中途从 `qingdou-1919` 换到 `doudou-1919` 新账号，最终推送目标以本行仓库为准。本机 `origin` 已指向新仓库。）
 - **分支状态（2026-09-06 收尾时快照）**：
-  - 本地 `main` 历史：`044de76`（远程初始 stub，仅 README“# -”）→ `c0fddd3`（已有用户版完成）→ `7b66e1b`（与远程 stub 的无关联历史合并，保留原 README 内容于文首）。
-  - 推送规则执行情况：远程非空 → 已 fetch 并 `--allow-unrelated-histories` 合并、保留原内容；**尚未 push** —— 会话环境对 github.com 的出网连接中途被断（fetch 成功、push 时 TCP 443 超时）。
-  - 接手时只需在本机（或任何有 GitHub 网络与凭据的环境）执行：`git push origin main`。
+  - 本地 `main` 历史：`044de76`（旧账号初始 stub，仅 README“# -”）→ `c0fddd3`（已有用户版完成）→ `7b66e1b`（与旧账号 stub 的无关联历史合并，保留原 README 内容于文首）→ `456e877`（交接状态记录）→ 后续文档更新提交。
+  - ✅ **推送完成**：`git push -u origin main`（SSH，`doudou-1919` 账号）成功，`origin/main` = 本地 `main`，远程为全新空仓库（无历史冲突）。
 
 ## 7. 本次会话收尾状态（附注）
 
 - ✅ TypeScript `tsc --noEmit` 通过；`pnpm run build` 通过；`pnpm test`（SSR 冒烟 + 产物断言）5/5 通过。
 - ✅ `app/layout.tsx` 元信息、全部双语界面、移动端章节切换、会话内跨 Tab/语言保留、AI 统一入口（chat + event_review，含缺失感受追问）已完成。
-- ⏳ **GitHub push**：`git push origin main` 被当前环境网络阻断（外部阻塞项，符合预期流程中“仅报告、不改仓库”的处理）；本地合并已就绪。
+- ✅ **GitHub 推送完成**（SSH 到 `doudou-1919/-.git`）。
 - ⏳ **Sites 重新发布**：需要具备发布授权的 Codex/OpenAI 环境执行；本机无法完成。构建产物 `dist/` 已就绪（被 `.gitignore` 忽略、不随仓库推送）。
 - 验证建议：`pnpm run dev` 后人工走一遍 首页 → 聊天（随手记/深度访谈/历史/洞察确认）→ 人生之书（编年表/补充事件/我是谁）→ 中英切换。
 
@@ -130,9 +129,8 @@ pnpm test               # 先 build 再跑 SSR 冒烟测试
 7. 聊天只展示“示例历史”会话，暂不能新建空白会话/重命名。
 
 ### 未完成事项（推荐顺序）
-1. **推送 GitHub `main`**：`git push origin main`（本环境出网被断；本地合并已完成、仓库内容即最终版）。
-2. **重新发布 Sites**（需要 OpenAI 环境授权）并更新 §6 实际地址。
-3. 更新 `public/og.png` / `favicon.svg` 为新品牌图形（路径汇聚 + 小人）。
+1. **重新发布 Sites**（需要 OpenAI 环境授权）并更新 §6 实际地址。
+2. 更新 `public/og.png` / `favicon.svg` 为新品牌图形（路径汇聚 + 小人）。
 4. 视觉回归：在 ≤900px / ≤620px 下过一遍 首页→聊天→人生之书→事件补充 全链路（本章节补充了移动端章节点与抽屉式历史）。
 5. （可选）把“演示人生/示例数据”升级为“新建会话”以更贴近真实产品。
 6. （可选）深度访谈洞察改为由模型根据真实对话内容提炼（route 已留好结构化入口）。
