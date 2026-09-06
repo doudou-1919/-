@@ -615,8 +615,48 @@ function HomeLanding({ lang, toggle, chat, book }: { lang: Lang; toggle: () => v
             <small>LIN XIAO · 1997—2026</small>
             <b>{z ? "林晓的转折之年" : "LIN'S YEAR OF TRANSITION"}</b>
           </div>
-          <div className="converging-lines">{[1, 2, 3, 4, 5, 6, 7].map((n) => <i key={n}></i>)}</div>
-          <div className="path-person"><span></span><b></b><em></em></div>
+          <svg className="hero-topo" viewBox="0 0 560 400" role="img" aria-label={z ? "人生路径：记录汇聚成路，人望向远方" : "Life path: records converge into a road, and the person looks ahead"}>
+            <title>{z ? "InnerOS 人生路径" : "InnerOS life path"}</title>
+            {/* 拓扑：散落的记录点 → 汇聚成一条路 → 抵达站立的人 */}
+            <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="64" cy="128" r="3.4" fill="#789b99" stroke="none" />
+              <circle cx="64" cy="176" r="3.4" fill="#101820" stroke="none" />
+              <circle cx="64" cy="226" r="3.4" fill="#789b99" stroke="none" />
+              <circle cx="64" cy="278" r="3.4" fill="#101820" stroke="none" />
+              <path d="M64 128 C150 142 212 200 294 256" stroke="#101820" strokeWidth="1.3" opacity=".45" />
+              <path d="M64 176 C150 180 214 226 294 256" stroke="#789b99" strokeWidth="1.5" opacity=".8" />
+              <path d="M64 226 C152 230 214 244 294 256" stroke="#789b99" strokeWidth="1.5" opacity=".5" />
+              <path d="M64 278 C150 272 218 262 294 256" stroke="#101820" strokeWidth="1.3" opacity=".3" />
+              <circle cx="294" cy="256" r="4.4" fill="#e92c19" stroke="none" />
+              <path d="M294 256 C346 264 392 300 432 330 C442 340 452 348 466 352" stroke="#e92c19" strokeWidth="2.6" />
+            </g>
+            {/* 地上的影子 */}
+            <ellipse cx="466" cy="355" rx="40" ry="6.5" fill="#101820" opacity=".08" />
+            <ellipse cx="466" cy="355" rx="25" ry="4.4" fill="#101820" opacity=".11" />
+            {/* 眺望的人：圆头 + 微前倾躯干 + 双腿，手持望远镜 */}
+            <g fill="#101820">
+              <ellipse cx="460" cy="305" rx="17" ry="9" />
+              <rect x="442" y="298" width="13" height="46" rx="6.5" />
+              <rect x="463" y="298" width="13" height="46" rx="6.5" />
+              <rect x="439" y="342" width="18" height="8" rx="4" />
+              <rect x="462" y="342" width="19" height="8" rx="4" />
+              <rect x="447" y="256" width="27" height="46" rx="13" transform="rotate(7 460 279)" />
+              <rect x="453" y="244" width="15" height="16" rx="7.5" />
+              <circle cx="460" cy="232" r="15.5" />
+            </g>
+            <path d="M471 262 C 489 268 502 254 507 240" fill="none" stroke="#101820" strokeWidth="9" strokeLinecap="round" />
+            {/* 望远镜（红）：从眼前指向右上方远方 */}
+            <line x1="480" y1="243" x2="539" y2="220" stroke="#e92c19" strokeWidth="7" strokeLinecap="round" />
+            <circle cx="539" cy="220" r="3.2" fill="#f2efe7" />
+            <circle cx="539" cy="220" r="1.5" fill="#e92c19" />
+            <circle cx="507" cy="238" r="5.5" fill="#101820" />
+            {/* 未被写下的下一章：镜筒方向的虚线通向空心圆 */}
+            <g stroke="#101820" strokeWidth="1.6" strokeDasharray="2.5 6" strokeLinecap="round" opacity=".5">
+              <path d="M543 217 C 545 214 548 210 550 206" />
+            </g>
+            <circle cx="553" cy="205" r="6.5" fill="none" stroke="#e92c19" strokeWidth="1.8" />
+            <circle cx="553" cy="205" r="1.6" fill="#e92c19" opacity=".7" />
+          </svg>
           <div className="path-caption">
             {z ? "18 段记录 · 7 个人生节点 · 3 个反复模式" : "18 records · 7 life moments · 3 patterns"}
           </div>

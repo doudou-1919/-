@@ -60,3 +60,12 @@
 .ev-empty{padding:22px;text-align:center;font-size:11px;color:var(--muted);background:var(--soft)}
 .ev-foot{font-size:9px;line-height:1.7;color:var(--muted);padding:16px 42px;border-top:1px solid var(--line)}
 @media(max-width:620px){.ev-head{padding:34px 22px 0}.ev-lede{padding:16px 22px 4px}.ev-list{padding:14px 22px 24px}.ev-foot{padding:14px 22px}.patterns article .evidence-chip{grid-column:2;justify-self:start}}
+
+/* ---- 首页改版：更克制的标题 + 拓扑人生路径图形 ---- */
+.hero-text h1{font-size:clamp(32px,3.6vw,56px);letter-spacing:-3px;line-height:1.14;margin:18px 0 24px}
+.path-identity{height:auto;min-height:0;display:flex;align-items:center;justify-content:center}
+.hero-topo{display:block;width:100%;height:auto;max-width:600px;max-height:470px}
+.path-copy{right:1%;top:1%}
+.path-caption{left:2%;bottom:0}
+@media(max-width:900px){.path-identity{height:auto;padding:16px 6vw 6px}.hero-topo{max-width:560px}}
+@media(max-width:620px){.path-identity{height:auto;padding:10px 8vw 2px}.hero-topo{max-width:340px}.hero-text h1{font-size:33px;letter-spacing:-2px;line-height:1.16}.path-copy{right:0;top:0}.path-caption{left:0}}
