@@ -18,8 +18,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const host = requestHeaders.get("host") ?? "localhost:3000";
   const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const socialImage = `${protocol}://${host}/og.png`;
-  const title = "InnerOS — 我的人生之书";
-  const description = "读懂你走过的路，看见你正在成为谁。";
+  const title = "InnerOS — 你的长期自我观察记录";
+  const description = "看见那些反复发生的事，也看见那个正在变化的自己。InnerOS 帮助你整理经历并形成自己的答案，不提供心理诊断，也不替你做决定。";
   return {
     title,
     description,
