@@ -25,7 +25,16 @@ pnpm run build    # 生产构建（vinext → dist/）
 pnpm test         # 构建 + SSR 冒烟测试
 ```
 
-AI（可选）：设置环境变量 `OPENAI_API_KEY`（可选 `OPENAI_MODEL`，默认 `gpt-5.2`）后，`/api/inneros` 会调用真实模型；未设置或异常时自动返回与林晓故事一致的兜底回复。
+## 启用 DeepSeek AI
+
+随手记、深度访谈和人生大事件复述共用 DeepSeek 服务。项目根目录已经预留 `.env.local`，打开后填写：
+
+```dotenv
+DEEPSEEK_API_KEY=sk-你的真实密钥
+DEEPSEEK_MODEL=deepseek-v4-flash
+```
+
+保存后重启本地服务（`pnpm run dev`）即可直接使用。`.env.local` 已被 Git 忽略，请勿将真实密钥提交到仓库。用于说明与复制的安全模板是 `.env.example`。如果未填写密钥或调用失败，界面会自动使用内置兜底回复，不会中断对话。
 
 ## 关键文件
 
@@ -33,7 +42,9 @@ AI（可选）：设置环境变量 `OPENAI_API_KEY`（可选 `OPENAI_MODEL`，�
 |---|---|
 | `app/page.tsx` | 全部页面视图与会话内状态 |
 | `app/types.ts` | 公共类型（ChatMode / Conversation / ChatMessage / Attachment / LifeEventDraft / ConfirmedLifeEvent / BeliefInsight） |
-| `app/api/inneros/route.ts` | AI 统一入口（chat / event_review） |
+| `app/api/inneros/route.ts` | DeepSeek AI 统一入口（chat / event_review） |
+| `.env.local` | 本地 DeepSeek 密钥填写处（不会提交） |
+| `PROGRESS.md` | 产品节点进度表；每次任务结束时更新 |
 | `app/globals.css` | 主题与样式（米白底 / 黑排版 / 鲜红路径 / 低饱和蓝绿辅助） |
 | `tests/rendered-html.test.mjs` | SSR 冒烟与产物断言 |
 | `HANDOVER.md` | 面向下一位接手者/Codex 的完整交接文档 |

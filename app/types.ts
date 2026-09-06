@@ -46,3 +46,17 @@ export interface BeliefInsight {
   evidenceCount: number;
   feedback?: "confirmed" | "rejected" | "needs_context";
 }
+
+export interface SummaryHypothesis {
+  kind: BeliefInsight["kind"];
+  title: string;
+  content: string;
+  evidence: string;
+}
+
+export interface ConversationSummary {
+  summary: string;
+  facts: string[];
+  explicitStatements: string[];
+  hypotheses: SummaryHypothesis[];
+}

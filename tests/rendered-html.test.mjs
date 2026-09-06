@@ -96,8 +96,20 @@ test("客户端产物包含聊天双 Tab、历史、编年表与三观坐标", a
     "价值观",
     "世界观",
     "我反复出现的模式",
+    "数据导入",
+    "新增定时更新数据",
+    "历史任务导入记录",
+    "结束此次对话，并生成总结",
+    "AI 假设，等待确认",
   ]) {
     assert.ok(bundle.includes(expect), `客户端产物中应包含：${expect}`);
+  }
+});
+
+test("深度访谈接口包含种子问题与六层自适应追问框架", async () => {
+  const source = await readFile(new URL("../app/api/inneros/route.ts", import.meta.url), "utf8");
+  for (const expect of ["如果把人生分成几个章节", "发生了什么", "当时什么感受", "真正希望得到什么", "害怕失去什么", "意味着什么", "以前是否发生过"]) {
+    assert.ok(source.includes(expect), `访谈提示词中应包含：${expect}`);
   }
 });
 
@@ -107,6 +119,6 @@ test("打包产物与站点托管配置存在", async () => {
   );
   assert.equal(typeof hosting.project_id, "string");
   assert.ok(hosting.project_id.length > 0);
-  assert.equal(hosting.d1, null);
-  assert.equal(hosting.r2, null);
+  assert.equal(hosting.d1, "DB");
+  assert.equal(hosting.r2, "CORPUS");
 });

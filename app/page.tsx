@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import type {
   Attachment,
   BeliefInsight,
@@ -8,13 +8,13 @@ import type {
   ChatMode,
   ConfirmedLifeEvent,
   Conversation,
+  ConversationSummary,
   LifeEventDraft,
 } from "./types";
 
 type Lang = "zh" | "en";
-type Screen = "home" | "chat" | "book";
+type Screen = "home" | "chat" | "book" | "import";
 type Chapter = "past" | "self" | "now" | "future" | "plan";
-type InsightKind = BeliefInsight["kind"];
 
 /* 证据抽屉：一条“结论/标签”背后的支撑记录 */
 type EvidenceItem = { when: string; kind: string; quote: string; note?: string };
@@ -55,20 +55,6 @@ const initialBeliefs: Record<Lang, BeliefInsight[]> = {
     { id: "life", kind: "life", title: "LIFE VIEW", content: "Life is not about finding one correct answer, but continually calibrating direction through action.", source: "From long-term records", evidenceCount: 8 },
     { id: "values", kind: "values", title: "VALUES", content: "Creativity · Autonomy · Honest connection", source: "From long-term records", evidenceCount: 11 },
     { id: "world", kind: "world", title: "WORLD VIEW", content: "Reality has constraints, but small experiments can gradually expand what is possible.", source: "Pending interview confirmation", evidenceCount: 4 },
-  ],
-};
-
-/* 深度访谈的阶段候选：一个阶段完成后，会生成一条待确认洞察。 */
-const insightStages: Record<Lang, Array<{ kind: InsightKind; label: string; headline: string; content: string }>> = {
-  zh: [
-    { kind: "values", label: "价值观", headline: "真实感比看起来正确更重要", content: "你愿意承受短期不确定，换取长期更忠于自己的选择。" },
-    { kind: "world", label: "世界观", headline: "选择空间可以靠小实验慢慢扩大", content: "现实有它的限制，但你正学着用一次次小实验，试探自己真正能改变的部分。" },
-    { kind: "life", label: "人生观", headline: "在行动中校准，而不是等待正确答案", content: "你越来越愿意把“不知道”当作继续前行的起点，而不是停下来的理由。" },
-  ],
-  en: [
-    { kind: "values", label: "VALUES", headline: "Feeling real matters more than looking correct", content: "You seem willing to accept short-term uncertainty for choices that feel more genuinely yours." },
-    { kind: "world", label: "WORLD VIEW", headline: "Choice expands through small experiments", content: "Constraints are real, yet you are learning to test, in small steps, what you can actually change." },
-    { kind: "life", label: "LIFE VIEW", headline: "Calibrate by acting, not by waiting", content: "You are increasingly treating “not knowing” as a starting point rather than a reason to stop." },
   ],
 };
 
@@ -291,7 +277,7 @@ const patternEvidence: Record<Lang, EvidenceItem[][]> = {
 function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
     <span className={`brand-mark ${compact ? "compact" : ""}`} aria-hidden="true">
-      <i></i><i></i><i></i><b></b>
+      <img src="/inneros-logo.png" alt="" />
     </span>
   );
 }
@@ -321,9 +307,8 @@ export default function Home() {
   }));
   const beliefs = beliefsState[lang];
   const applyBeliefs = (next: BeliefInsight[]) => setBeliefsState((s) => ({ ...s, [lang]: next }));
-  const [candidate, setCandidate] = useState<BeliefInsight | null>(null);
-  const [stageStep, setStageStep] = useState(0);
-  const sendsInSession = useRef(0);
+  const [summaryReview, setSummaryReview] = useState<ConversationSummary | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
 
   const [addedEvents, setAddedEvents] = useState<ConfirmedLifeEvent[]>([]);
   const [eventOpen, setEventOpen] = useState(false);
@@ -350,9 +335,7 @@ export default function Home() {
   };
 
   const resetInterview = () => {
-    setCandidate(null);
-    setStageStep(0);
-    sendsInSession.current = 0;
+    setSummaryReview(null);
   };
 
   const openChat = (initialMode: ChatMode = "quick_note") => {
@@ -408,7 +391,6 @@ export default function Home() {
     setDraft("");
     setAttachments([]);
     setSending(true);
-    sendsInSession.current += 1;
 
     let content = "";
     try {
@@ -426,44 +408,44 @@ export default function Home() {
     persistConversation({ ...conversation, messages: [...nextMessages, assistant], status: "active" });
     setSending(false);
 
-    /* 深度访谈：大约每 3 轮自然追问，生成一条“待确认洞察”，阶段依次推进 */
-    if (mode === "deep_interview") {
-      const stages = insightStages[lang];
-      const isStageBoundary = sendsInSession.current === 1 || (sendsInSession.current - 1) % 3 === 0;
-      if (isStageBoundary && stageStep < stages.length && !candidate) {
-        const stage = stages[stageStep];
-        setCandidate({
-          id: `candidate-${Date.now()}`,
-          kind: stage.kind,
-          title: stage.label,
-          content: `${stage.headline}：${stage.content}`,
-          source: isZh ? "本次深度访谈 · 待你确认" : "This interview · Awaiting your confirmation",
-          evidenceCount: 3,
-        });
-      }
+  }
+
+  async function finishConversation() {
+    if (!conversation.messages.some((message) => message.role === "user")) return;
+    setSummarizing(true);
+    try {
+      const response = await fetch("/api/inneros", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ task: "conversation_summary", mode, lang, messages: conversation.messages }),
+      });
+      if (!response.ok) throw new Error("request_failed");
+      setSummaryReview((await response.json()).summary);
+      persistConversation({ ...conversation, status: "complete" });
+    } catch {
+      setSummaryReview({
+        summary: isZh ? "暂时无法连接 AI。你的对话仍然完整保留，可以稍后再次生成总结。" : "AI is temporarily unavailable. Your conversation remains intact; try generating the summary again later.",
+        facts: [], explicitStatements: [], hypotheses: [],
+      });
+    } finally {
+      setSummarizing(false);
     }
   }
 
-  const confirmCandidate = (amendNote = "") => {
-    if (!candidate) return;
-    const noteSuffix = amendNote.trim()
-      ? (isZh ? `（补充：${amendNote.trim()}）` : ` (my addition: ${amendNote.trim()})`)
-      : "";
-    const confirmed: BeliefInsight = {
-      ...candidate,
-      id: crypto.randomUUID(),
-      content: candidate.content + noteSuffix,
-      source: isZh ? "深度访谈 · 已确认" : "Deep interview · Confirmed",
-      feedback: "confirmed",
-    };
-    setBeliefsState((s) => ({ ...s, [lang]: [...s[lang], confirmed] }));
-    setCandidate(null);
-    setStageStep((s) => s + 1);
+  const updateSummaryHypothesis = (index: number, content: string) => {
+    setSummaryReview((current) => current ? { ...current, hypotheses: current.hypotheses.map((item, i) => i === index ? { ...item, content } : item) } : current);
   };
 
-  const rejectCandidate = () => {
-    setCandidate(null);
-    setStageStep((s) => s + 1);
+  const confirmSummary = () => {
+    if (!summaryReview) return;
+    const confirmed = summaryReview.hypotheses.filter((item) => item.content.trim()).map((item) => ({
+      id: crypto.randomUUID(), kind: item.kind, title: item.title, content: item.content.trim(),
+      source: isZh ? `${mode === "deep_interview" ? "深度访谈" : "随手记"} · 用户确认` : `${mode === "deep_interview" ? "Deep interview" : "Quick note"} · Confirmed by you`,
+      evidenceCount: 1, feedback: "confirmed" as const,
+    }));
+    setBeliefsState((state) => ({ ...state, [lang]: [...state[lang], ...confirmed] }));
+    setSummaryReview(null);
+    setChapter("self");
+    setScreen("book");
   };
 
   /* ------- 人生大事件补充：填写 → AI 复述确认 → 加入编年表 ------- */
@@ -514,7 +496,7 @@ export default function Home() {
   return (
     <>
       {screen === "home" && (
-        <HomeLanding lang={lang} toggle={changeLang} chat={() => openChat("quick_note")} book={() => openBook("past")} />
+        <HomeLanding lang={lang} toggle={changeLang} chat={() => openChat("quick_note")} book={() => openBook("past")} data={() => setScreen("import")} />
       )}
       {screen === "chat" && (
         <Chat
@@ -535,9 +517,12 @@ export default function Home() {
           removeAttachment={removeAttachment}
           send={sendMessage}
           sending={sending}
-          candidate={candidate}
-          confirmCandidate={confirmCandidate}
-          rejectCandidate={rejectCandidate}
+          summary={summaryReview}
+          summarizing={summarizing}
+          finish={finishConversation}
+          updateHypothesis={updateSummaryHypothesis}
+          confirmSummary={confirmSummary}
+          dismissSummary={() => setSummaryReview(null)}
         />
       )}
       {screen === "book" && (
@@ -555,6 +540,7 @@ export default function Home() {
           onEvidence={setEvidence}
         />
       )}
+      {screen === "import" && <DataImport lang={lang} toggle={changeLang} home={() => setScreen("home")} />}
       {evidence && <EvidenceDrawer lang={lang} pack={evidence} close={() => setEvidence(null)} />}
       {eventOpen && (
         <EventModal
@@ -581,19 +567,19 @@ export default function Home() {
 
 /* ============================== 首页 ============================== */
 
-function HomeLanding({ lang, toggle, chat, book }: { lang: Lang; toggle: () => void; chat: () => void; book: () => void }) {
+function HomeLanding({ lang, toggle, chat, book, data }: { lang: Lang; toggle: () => void; chat: () => void; book: () => void; data: () => void }) {
   const z = lang === "zh";
   return (
     <main className="home">
-      <Header lang={lang} toggle={toggle} />
+      <Header lang={lang} toggle={toggle} data={data} />
       <section className="home-hero">
         <div className="hero-text">
           <p className="eyebrow">{z ? "你的长期自我观察记录" : "YOUR LONG-TERM SELF OBSERVATION"}</p>
           <h1>
             {z ? (
-              <>看见那些反复发生的事，<br />也看见那个<span>正在变化</span>的自己。</>
+              <><span className="hero-line">看见那些反复发生的事，</span><span className="hero-line">也看见那个<em>正在变化</em>的自己。</span></>
             ) : (
-              <>See what keeps repeating.<br />And the self that is <span>still changing.</span></>
+              <><span className="hero-line">See what keeps repeating.</span><span className="hero-line">And the self that is <em>still changing.</em></span></>
             )}
           </h1>
           <p>
@@ -610,57 +596,7 @@ function HomeLanding({ lang, toggle, chat, book }: { lang: Lang; toggle: () => v
             </button>
           </div>
         </div>
-        <div className="path-identity">
-          <div className="path-copy">
-            <small>LIN XIAO · 1997—2026</small>
-            <b>{z ? "林晓的转折之年" : "LIN'S YEAR OF TRANSITION"}</b>
-          </div>
-          <svg className="hero-topo" viewBox="0 0 560 400" role="img" aria-label={z ? "人生路径：记录汇聚成路，人望向远方" : "Life path: records converge into a road, and the person looks ahead"}>
-            <title>{z ? "InnerOS 人生路径" : "InnerOS life path"}</title>
-            {/* 拓扑：散落的记录点 → 汇聚成一条路 → 抵达站立的人 */}
-            <g fill="none" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="64" cy="128" r="3.4" fill="#789b99" stroke="none" />
-              <circle cx="64" cy="176" r="3.4" fill="#101820" stroke="none" />
-              <circle cx="64" cy="226" r="3.4" fill="#789b99" stroke="none" />
-              <circle cx="64" cy="278" r="3.4" fill="#101820" stroke="none" />
-              <path d="M64 128 C150 142 212 200 294 256" stroke="#101820" strokeWidth="1.3" opacity=".45" />
-              <path d="M64 176 C150 180 214 226 294 256" stroke="#789b99" strokeWidth="1.5" opacity=".8" />
-              <path d="M64 226 C152 230 214 244 294 256" stroke="#789b99" strokeWidth="1.5" opacity=".5" />
-              <path d="M64 278 C150 272 218 262 294 256" stroke="#101820" strokeWidth="1.3" opacity=".3" />
-              <circle cx="294" cy="256" r="4.4" fill="#e92c19" stroke="none" />
-              <path d="M294 256 C346 264 392 300 432 330 C442 340 452 348 466 352" stroke="#e92c19" strokeWidth="2.6" />
-            </g>
-            {/* 地上的影子 */}
-            <ellipse cx="466" cy="355" rx="40" ry="6.5" fill="#101820" opacity=".08" />
-            <ellipse cx="466" cy="355" rx="25" ry="4.4" fill="#101820" opacity=".11" />
-            {/* 眺望的人：圆头 + 微前倾躯干 + 双腿，手持望远镜 */}
-            <g fill="#101820">
-              <ellipse cx="460" cy="305" rx="17" ry="9" />
-              <rect x="442" y="298" width="13" height="46" rx="6.5" />
-              <rect x="463" y="298" width="13" height="46" rx="6.5" />
-              <rect x="439" y="342" width="18" height="8" rx="4" />
-              <rect x="462" y="342" width="19" height="8" rx="4" />
-              <rect x="447" y="256" width="27" height="46" rx="13" transform="rotate(7 460 279)" />
-              <rect x="453" y="244" width="15" height="16" rx="7.5" />
-              <circle cx="460" cy="232" r="15.5" />
-            </g>
-            <path d="M471 262 C 489 268 502 254 507 240" fill="none" stroke="#101820" strokeWidth="9" strokeLinecap="round" />
-            {/* 望远镜（红）：从眼前指向右上方远方 */}
-            <line x1="480" y1="243" x2="539" y2="220" stroke="#e92c19" strokeWidth="7" strokeLinecap="round" />
-            <circle cx="539" cy="220" r="3.2" fill="#f2efe7" />
-            <circle cx="539" cy="220" r="1.5" fill="#e92c19" />
-            <circle cx="507" cy="238" r="5.5" fill="#101820" />
-            {/* 未被写下的下一章：镜筒方向的虚线通向空心圆 */}
-            <g stroke="#101820" strokeWidth="1.6" strokeDasharray="2.5 6" strokeLinecap="round" opacity=".5">
-              <path d="M543 217 C 545 214 548 210 550 206" />
-            </g>
-            <circle cx="553" cy="205" r="6.5" fill="none" stroke="#e92c19" strokeWidth="1.8" />
-            <circle cx="553" cy="205" r="1.6" fill="#e92c19" opacity=".7" />
-          </svg>
-          <div className="path-caption">
-            {z ? "18 段记录 · 7 个人生节点 · 3 个反复模式" : "18 records · 7 life moments · 3 patterns"}
-          </div>
-        </div>
+        <div className="path-identity" role="img" aria-label={z ? "三条彩色人生路径在页面中交汇" : "Three colorful life paths crossing across the page"} />
       </section>
       <footer className="quiet-footer">
         {z
@@ -673,7 +609,7 @@ function HomeLanding({ lang, toggle, chat, book }: { lang: Lang; toggle: () => v
 
 /* ============================== 顶栏 ============================== */
 
-function Header({ lang, toggle, back, chat }: { lang: Lang; toggle: () => void; back?: () => void; chat?: () => void }) {
+function Header({ lang, toggle, back, chat, data }: { lang: Lang; toggle: () => void; back?: () => void; chat?: () => void; data?: () => void }) {
   return (
     <header className="site-header">
       <div className="header-left">
@@ -689,6 +625,7 @@ function Header({ lang, toggle, back, chat }: { lang: Lang; toggle: () => void; 
       </div>
       <div className="header-right">
         {chat && <button className="header-chat" onClick={chat}>{lang === "zh" ? "找我聊聊" : "Talk to me"}</button>}
+        {data && <button className="data-entry" onClick={data}>{lang === "zh" ? "数据导入" : "Data import"}</button>}
         <button className="lang" onClick={toggle}>中 / EN</button>
         <span className="user-avatar">林</span>
       </div>
@@ -701,7 +638,7 @@ function Header({ lang, toggle, back, chat }: { lang: Lang; toggle: () => void; 
 function Chat({
   lang, toggle, back, mode, switchMode, historyOpen, setHistoryOpen, conversation, selectHistory, conversations,
   draft, setDraft, attachments, addAttachment, removeAttachment, send, sending,
-  candidate, confirmCandidate, rejectCandidate,
+  summary, summarizing, finish, updateHypothesis, confirmSummary, dismissSummary,
 }: {
   lang: Lang; toggle: () => void; back: () => void;
   mode: ChatMode; switchMode: (m: ChatMode) => void;
@@ -711,22 +648,35 @@ function Chat({
   draft: string; setDraft: (v: string) => void;
   attachments: Attachment[]; addAttachment: (k: Attachment["kind"]) => void; removeAttachment: (id: string) => void;
   send: () => void; sending: boolean;
-  candidate: BeliefInsight | null; confirmCandidate: (amendNote?: string) => void; rejectCandidate: () => void;
+  summary: ConversationSummary | null; summarizing: boolean; finish: () => void;
+  updateHypothesis: (index: number, content: string) => void; confirmSummary: () => void; dismissSummary: () => void;
 }) {
   const z = lang === "zh";
-  const [amending, setAmending] = useState(false);
-  const [amendText, setAmendText] = useState("");
+  const [listening, setListening] = useState(false);
+  const [voiceNotice, setVoiceNotice] = useState("");
 
   const placeholders = {
     quick_note: z ? "记下现在想到的事…" : "Write what's on your mind…",
     deep_interview: z ? "慢慢说，没有标准答案…" : "Take your time. There is no right answer…",
   };
 
-  const submitAmend = () => {
-    if (!candidate || !amendText.trim()) return;
-    confirmCandidate(amendText);
-    setAmendText("");
-    setAmending(false);
+  const startVoice = () => {
+    type Recognition = { lang: string; interimResults: boolean; start: () => void; onresult: (event: { results: ArrayLike<{ 0: { transcript: string } }> }) => void; onend: () => void; onerror: () => void };
+    const speechWindow = window as typeof window & { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
+    const RecognitionClass = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
+    if (!RecognitionClass) {
+      setVoiceNotice(z ? "当前浏览器不支持语音输入，可上传语音文件。" : "Voice input is unavailable in this browser; you can attach an audio file.");
+      return;
+    }
+    const recognition = new RecognitionClass();
+    recognition.lang = z ? "zh-CN" : "en-US";
+    recognition.interimResults = false;
+    recognition.onresult = (event) => setDraft(`${draft}${draft ? " " : ""}${event.results[0][0].transcript}`);
+    recognition.onend = () => setListening(false);
+    recognition.onerror = () => { setListening(false); setVoiceNotice(z ? "没有识别到语音，请再试一次。" : "No speech was recognized. Please try again."); };
+    setVoiceNotice("");
+    setListening(true);
+    recognition.start();
   };
 
   return (
@@ -795,33 +745,24 @@ function Chat({
             <div className="message assistant"><span>IO</span><div className="typing"><i></i><i></i><i></i></div></div>
           )}
 
-          {candidate && (
-            <article className="insight-candidate">
-              <small>{z ? "从这次访谈中，我听见一个可能的判断" : "A possible reading surfaced in this interview"}</small>
-              <h3>{candidate.content}</h3>
-              <p>{z ? "这只是我的理解，确认后才会写进你的人生之书。它符合你吗？" : "This is only my reading—nothing is written until you confirm. Does it feel true?"}</p>
-              {amending ? (
-                <div className="amend-box">
-                  <textarea
-                    autoFocus
-                    value={amendText}
-                    onChange={(e) => setAmendText(e.target.value)}
-                    placeholder={z ? "补充你的想法，或修正我说得不对的地方…" : "Add your own words, or correct my reading…"}
-                  />
-                  <div className="amend-actions">
-                    <button onClick={() => { setAmending(false); setAmendText(""); }}>{z ? "取消" : "Cancel"}</button>
-                    <button className="amend-save" onClick={submitAmend} disabled={!amendText.trim()}>
-                      ✓ {z ? "保存并确认" : "Save & confirm"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <button className="confirm" onClick={() => confirmCandidate()}>✓ {z ? "符合我" : "Feels true"}</button>
-                  <button onClick={() => { setAmending(true); setAmendText(""); }}>＋ {z ? "补充我的理解" : "Add nuance"}</button>
-                  <button onClick={rejectCandidate}>× {z ? "不太符合" : "Not quite"}</button>
-                </div>
-              )}
+          {summary && (
+            <article className="summary-review">
+              <small>{z ? "对话总结 · 由你决定哪些解释成立" : "CONVERSATION SUMMARY · YOU KEEP THE FINAL SAY"}</small>
+              <h2>{z ? "先核对，再写入人生之书" : "Review before adding to your Life Book"}</h2>
+              <p className="summary-lede">{summary.summary}</p>
+              <section><b>{z ? "事实" : "FACTS"}</b>{summary.facts.length ? summary.facts.map((item) => <p key={item}>{item}</p>) : <p className="empty-layer">{z ? "本次没有足够信息形成事实记录" : "No sufficiently grounded facts"}</p>}</section>
+              <section><b>{z ? "用户明确表达" : "EXPLICITLY STATED BY YOU"}</b>{summary.explicitStatements.map((item) => <p key={item}>“{item}”</p>)}</section>
+              <section className="hypothesis-layer">
+                <b>{z ? "AI 假设，等待确认" : "AI HYPOTHESES · AWAITING CONFIRMATION"}</b>
+                {summary.hypotheses.length ? summary.hypotheses.map((item, index) => (
+                  <label key={`${item.title}-${index}`}><span>{item.title}</span><textarea value={item.content} onChange={(event) => updateHypothesis(index, event.target.value)} /><small>{z ? "依据：" : "Evidence: "}{item.evidence}</small></label>
+                )) : <p className="empty-layer">{z ? "AI 没有生成证据充分的假设；你的原话仍保留在上方。" : "No sufficiently supported hypotheses were generated."}</p>}
+              </section>
+              <div className="summary-actions">
+                <button onClick={dismissSummary}>{z ? "不加入" : "Don't add"}</button>
+                <button className="confirm" onClick={confirmSummary} disabled={!summary.hypotheses.some((item) => item.content.trim())}>✓ {z ? "准确，确认加入人生之书" : "Accurate — add to Life Book"}</button>
+              </div>
+              <p className="confirmed-layer">{z ? "确认后，所选 AI 假设才会成为「AI 归纳，用户已确认」；事实与原话不会被改写成人格结论。" : "Only after confirmation do these become AI inferences confirmed by you. Facts and your own words remain separate."}</p>
             </article>
           )}
         </div>
@@ -853,8 +794,11 @@ function Chat({
             <button onClick={() => addAttachment("photo")}>▧ <span>{z ? "照片" : "Photo"}</span></button>
             <button onClick={() => addAttachment("ai_history")}>✦ <span>{z ? "AI记录" : "AI history"}</span></button>
             <button onClick={() => addAttachment("file")}>＋ <span>{z ? "文件" : "File"}</span></button>
+            {mode === "deep_interview" && <button className={`voice ${listening ? "active" : ""}`} onClick={startVoice} disabled={listening}>● <span>{listening ? (z ? "正在听…" : "Listening…") : (z ? "语音" : "Voice")}</span></button>}
+            <button className="finish-chat" onClick={finish} disabled={sending || summarizing || !conversation.messages.some((message) => message.role === "user")}>{summarizing ? (z ? "总结中…" : "Summarizing…") : (z ? "结束此次对话，并生成总结" : "Finish & summarize")}</button>
             <button className="send" onClick={send} disabled={sending}>↑</button>
           </div>
+          {voiceNotice && <p className="voice-notice">{voiceNotice}</p>}
         </div>
         <p className="chat-privacy">
           {z
@@ -942,6 +886,10 @@ function Past({ lang, addedEvents, addEvent, next, onEvidence }: {
   onEvidence: (p: EvidencePack) => void;
 }) {
   const z = lang === "zh";
+  const [importedInsights, setImportedInsights] = useState<Array<ImportRecord & { aiDigest?: string }>>([]);
+  useEffect(() => {
+    fetch("/api/imports").then((response) => response.ok ? response.json() : { records: [] }).then((data) => setImportedInsights((data.records ?? []).filter((record: { aiDigest?: string }) => record.aiDigest))).catch(() => undefined);
+  }, []);
   const stages = baseTimeline[lang];
   return (
     <>
@@ -1025,6 +973,11 @@ function Past({ lang, addedEvents, addEvent, next, onEvidence }: {
                 </button>
               </span>
             </div>
+          </article>
+        ))}
+        {importedInsights.map((record) => (
+          <article className="user-event" key={`import-${record.id}`}>
+            <time>{record.fetchedAt}</time><i></i><div><small>{z ? "数据导入 · AI 待确认" : "DATA IMPORT · AI CANDIDATE"}</small><h3>{record.name}</h3><p>{record.aiDigest}</p><span className="node-chips"><em>{record.sourceType}</em><em>{record.status}</em></span></div>
           </article>
         ))}
       </div>
@@ -1362,6 +1315,92 @@ function EventModal({
   );
 }
 
+/* ============================== 数据导入 ============================== */
+
+type ImportRecord = { id: string; sourceType: string; name: string; fetchedAt: string; frequency: string; status: string };
+
+function DataImport({ lang, toggle, home }: { lang: Lang; toggle: () => void; home: () => void }) {
+  const z = lang === "zh";
+  const [sourceType, setSourceType] = useState("website");
+  const [url, setUrl] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [records, setRecords] = useState<ImportRecord[]>([]);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+
+  const labels: Record<string, string> = { website: "网站链接", wechat: "微信聊天记录", ai_chat: "AI 对话记录", diary: "日记", image: "图片", audio: "语音文件", folder: "特定文件夹" };
+
+  async function refresh() {
+    try {
+      const response = await fetch("/api/imports");
+      if (response.ok) setRecords((await response.json()).records ?? []);
+    } catch { /* 首次没有历史记录时保持空状态 */ }
+  }
+
+  useEffect(() => { void refresh(); }, []);
+
+  async function submitImport() {
+    if (!url.trim() && !file) return setNotice(z ? "请填写链接或选择文件。" : "Add a URL or choose a file.");
+    setBusy(true); setNotice("");
+    const data = new FormData();
+    data.set("sourceType", sourceType); data.set("url", url.trim());
+    if (file) data.set("file", file);
+    try {
+      const response = await fetch("/api/imports", { method: "POST", body: data });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "import_failed");
+      setNotice(z ? "导入完成，AI 已更新语料并生成《人生之书》候选内容。" : "Imported. AI refreshed the corpus and created a Life Book candidate.");
+      setUrl(""); setFile(null); await refresh();
+    } catch {
+      setNotice(z ? "导入失败，请检查数据源后重试。" : "Import failed. Check the source and try again.");
+    } finally { setBusy(false); }
+  }
+
+  async function saveSchedule(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setBusy(true);
+    try {
+      const response = await fetch("/api/imports", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(Object.fromEntries(form)) });
+      if (!response.ok) throw new Error("schedule_failed");
+      setScheduleOpen(false); setNotice(z ? "定时更新计划已保存。" : "Update schedule saved."); await refresh();
+    } catch { setNotice(z ? "计划保存失败，请重试。" : "Could not save the schedule."); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <main className="data-screen">
+      <Header lang={lang} toggle={toggle} back={home} />
+      <section className="data-page">
+        <div className="data-title-row">
+          <div><p className="eyebrow">DATA INGESTION</p><h1>{z ? "数据导入" : "Data import"}</h1><p>{z ? "把散落在不同地方的生活记录带回 InnerOS。原始语料会按来源归档，AI 处理后形成《人生之书》的候选更新。" : "Bring scattered life records into InnerOS. Sources are archived, then AI prepares Life Book updates."}</p></div>
+          <button className="schedule-button" onClick={() => setScheduleOpen(true)}>＋ {z ? "新增定时更新数据" : "New scheduled update"}</button>
+        </div>
+        <section className="import-panel">
+          <div className="source-tabs">
+            {Object.entries(labels).slice(0, 6).map(([key, label]) => <button key={key} className={sourceType === key ? "active" : ""} onClick={() => setSourceType(key)}>{label}</button>)}
+          </div>
+          <div className="import-fields">
+            <label><span>{z ? "网站或记录链接" : "Website or record URL"}</span><input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" /></label>
+            <span className="or">{z ? "或" : "OR"}</span>
+            <label className="file-drop"><input type="file" accept=".txt,.md,.json,.csv,.zip,image/*,audio/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /><b>＋ {file?.name ?? (z ? "选择文件" : "Choose file")}</b><small>{z ? "聊天记录、日记、图片、语音等" : "Chats, journals, images, audio and more"}</small></label>
+            <button className="primary import-submit" disabled={busy} onClick={submitImport}>{busy ? (z ? "处理中…" : "Processing…") : (z ? "导入并更新语料" : "Import and refresh")}</button>
+          </div>
+          {notice && <p className="import-notice">{notice}</p>}
+        </section>
+        <section className="import-history">
+          <div className="section-title"><span>01</span><div><h2>{z ? "历史任务导入记录" : "Import history"}</h2><p>{z ? "每次抓取和处理都有迹可循" : "Every ingestion and update remains traceable"}</p></div></div>
+          <div className="import-table"><div className="table-head"><b>{z ? "数据源类型" : "SOURCE"}</b><b>{z ? "抓取时间" : "FETCHED"}</b><b>{z ? "更新频率" : "FREQUENCY"}</b><b>{z ? "处理状态" : "STATUS"}</b></div>
+            {records.length ? records.map((record) => <div className="table-row" key={record.id}><span><b>{record.sourceType}</b><small>{record.name}</small></span><time>{record.fetchedAt}</time><span>{record.frequency}</span><em>{record.status}</em></div>) : <p className="table-empty">{z ? "还没有导入记录。完成第一次导入后会显示在这里。" : "No imports yet. Your first import will appear here."}</p>}
+          </div>
+        </section>
+      </section>
+      {scheduleOpen && <div className="modal-wrap"><button className="modal-shade" onClick={() => setScheduleOpen(false)}></button><aside className="schedule-modal"><button className="modal-x" onClick={() => setScheduleOpen(false)}>×</button><p className="eyebrow">AUTOMATION</p><h2>{z ? "新增定时更新数据" : "New scheduled update"}</h2><form onSubmit={saveSchedule}><label>{z ? "数据源类型" : "Source type"}<select name="sourceType" defaultValue="website"><option value="website">网站链接</option><option value="ai_chat">AI 对话记录链接</option><option value="wechat">微信特定人群聊天记录</option><option value="folder">特定文件夹</option></select></label><label>{z ? "链接或文件夹标识" : "URL or folder reference"}<input name="target" required placeholder="https://… / 文件夹名称" /></label><label>{z ? "更新频率" : "Frequency"}<select name="frequency" defaultValue="weekly"><option value="daily">每天</option><option value="weekly">每周</option><option value="monthly">每月</option><option value="quarterly">每季度</option></select></label><button className="primary" disabled={busy}>{z ? "保存更新计划" : "Save schedule"}</button></form><p className="schedule-hint">{z ? "受平台权限限制，微信需先导出记录或连接受支持的数据源；系统不会绕过应用权限读取聊天。" : "WeChat records require an export or a supported connection; InnerOS never bypasses app permissions."}</p></aside></div>}
+    </main>
+  );
+}
+
 /* -------------------- 支撑证据抽屉（右侧滑出） -------------------- */
 
 function EvidenceDrawer({ lang, pack, close }: {
@@ -1393,7 +1432,10 @@ function EvidenceDrawer({ lang, pack, close }: {
                 <time>{it.when}</time>
               </p>
               <blockquote>{it.quote}</blockquote>
-              {it.note && <p className="ev-note">{it.note}</p>}
+              <div className="ev-ai-note">
+                <b>{z ? "AI 的理解" : "AI INTERPRETATION"}</b>
+                <p>{it.note ?? (z ? `这条记录为“${pack.title}”提供了一段具体的经历线索。` : `This record offers a concrete lived clue behind “${pack.title}.”`)}</p>
+              </div>
             </article>
           ))}
           {pack.items.length === 0 && (
