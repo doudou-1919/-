@@ -16,6 +16,10 @@ type Screen = "home" | "chat" | "book";
 type Chapter = "past" | "self" | "now" | "future" | "plan";
 type InsightKind = BeliefInsight["kind"];
 
+/* 证据抽屉：一条“结论/标签”背后的支撑记录 */
+type EvidenceItem = { when: string; kind: string; quote: string; note?: string };
+type EvidencePack = { title: string; meta: string; items: EvidenceItem[] };
+
 /* ------------------------------------------------------------------ */
 /* 林晓的示例数据（会话内状态；刷新不保留用户新增内容）                  */
 /* ------------------------------------------------------------------ */
@@ -140,6 +144,147 @@ const seedHistories: Record<Lang, Conversation[]> = {
 };
 
 /* ------------------------------------------------------------------ */
+/* 支撑证据演示数据（与 baseTimeline/坐标/模式一一对应）                */
+/* ------------------------------------------------------------------ */
+
+const nodeEvidence: Record<Lang, EvidenceItem[][]> = {
+  zh: [
+    [
+      { when: "2006 · 日记", kind: "用户回忆", quote: "大人们夸我“懂事”。我知道，那意味着要先看别人脸色，再决定自己该说什么。" },
+      { when: "2026-08 · ChatGPT 对话", kind: "深度访谈", quote: "聊到童年，我发现自己总是那个不需要大人操心的孩子——现在看，那也是一种沉默的代价。" },
+    ],
+    [
+      { when: "2012-06 · 日记", kind: "用户回忆", quote: "校庆小册子贴在了公告栏正中间。我没有觉得被表扬，而是第一次觉得：我说出来了。" },
+      { when: "2012 · 作品资料", kind: "照片扫描", quote: "小册子封面扫描件：手绘的校门与一群小人。旁边批注：他们走向同一个方向。" },
+    ],
+    [
+      { when: "2015-09 · 聊天记录", kind: "用户回忆", quote: "给家里报平安说“一切都好”。挂了电话在阳台站了很久——我知道这是我选的路。" },
+      { when: "2016 · 日记", kind: "用户回忆", quote: "第一次逃课去看展。原来离开“被安排”之后，我需要自己决定如何度过一天。" },
+    ],
+    [
+      { when: "2018-04 · 作品集", kind: "照片扫描", quote: "面试展示的改版方案。当时写下的理由：好的设计先理解别人，也保留自己的判断。" },
+      { when: "2019 · ChatGPT 对话", kind: "深度访谈", quote: "第一份工作最打动我的，不是头衔，而是发现我能替别人解决一个真实的问题。" },
+    ],
+    [
+      { when: "2021 · 日历", kind: "日历", quote: "深夜加班高频出现：连续 21 天，最早离开时间是 22:14。" },
+      { when: "2026-08 · ChatGPT 对话", kind: "深度访谈", quote: "那两年我把休息、关系、创作全部排到“忙完以后”，而“忙完”一直没有来。" },
+    ],
+    [
+      { when: "2026-02-13 · 日记", kind: "用户回忆", quote: "晋升名单里没有我。奇怪的是我松了一口气——原来我早就怀疑，这条路也许不是我要的。" },
+      { when: "2026-02 · ChatGPT 对话", kind: "深度访谈", quote: "我在对话里反复说“不甘心”，其实真正的问题不是职位，而是我到底想创造什么。" },
+    ],
+    [
+      { when: "2026-06 · 写作草稿", kind: "作品", quote: "第一次公开发表自己的文字。有人读不懂，也有人读懂了——后者让我觉得值得继续。" },
+      { when: "2026-08 · ChatGPT 对话", kind: "深度访谈", quote: "最近三个月描述“满足感”时，出现最多的词是：创造、连接、自主。" },
+    ],
+  ],
+  en: [
+    [
+      { when: "2006 · Journal", kind: "Memory", quote: "Adults praised me for being “sensible.” I knew it meant reading their faces before deciding what to say." },
+      { when: "Aug 2026 · ChatGPT", kind: "Interview", quote: "Talking about childhood, I was always the child who needed no looking after—now I see that silence had its own cost." },
+    ],
+    [
+      { when: "Jun 2012 · Journal", kind: "Memory", quote: "My school-fair booklet went up at the center of the board. I didn't feel praised—I felt, for the first time, that I had expressed something." },
+      { when: "2012 · Portfolio", kind: "Photo", quote: "Scan of the booklet cover: hand-drawn school gate and a crowd of small figures, all walking toward one direction." },
+    ],
+    [
+      { when: "Sep 2015 · Chat log", kind: "Memory", quote: "I told home everything was fine. After hanging up I stood on the dorm balcony a long while—I knew this was a road I chose." },
+      { when: "2016 · Journal", kind: "Memory", quote: "I skipped class to see an exhibition. Away from being arranged, I had to decide how to spend a day myself." },
+    ],
+    [
+      { when: "Apr 2018 · Portfolio", kind: "Photo", quote: "The redesign I presented at interviews. I wrote: good design understands others while keeping your own judgment." },
+      { when: "2019 · ChatGPT", kind: "Interview", quote: "What moved me about the first job wasn't the title—it was discovering I could solve a real problem for someone." },
+    ],
+    [
+      { when: "2021 · Calendar", kind: "Calendar", quote: "Late nights were frequent: 21 straight days, earliest departure 22:14." },
+      { when: "Aug 2026 · ChatGPT", kind: "Interview", quote: "For two years I moved rest, relationships, and making to “after things calm down”—and calm never came." },
+    ],
+    [
+      { when: "Feb 13 2026 · Journal", kind: "Memory", quote: "My name wasn't on the promotion list. Oddly, I felt relieved—I had long suspected this path might not be mine." },
+      { when: "Feb 2026 · ChatGPT", kind: "Interview", quote: "I kept saying I was “not reconciled.” The real question wasn't the title—it was what I wanted to create." },
+    ],
+    [
+      { when: "Jun 2026 · Draft", kind: "Writing", quote: "I published my own words for the first time. Some didn't get it; someone did—that made it worth continuing." },
+      { when: "Aug 2026 · ChatGPT", kind: "Interview", quote: "Lately, when I describe “fulfillment,” the words that appear most are: making, connection, autonomy." },
+    ],
+  ],
+};
+
+const beliefEvidence: Record<Lang, Record<string, EvidenceItem[]>> = {
+  zh: {
+    life: [
+      { when: "2012 · 日记", kind: "用户回忆", quote: "第一次尝到“表达出自己”的感觉，发现答案不是别人给的，是做出来的。" },
+      { when: "2026-02 · ChatGPT 对话", kind: "深度访谈", quote: "错过晋升后我承认：我一直想找到那个“正确答案”，但它可能根本不存在。" },
+      { when: "2026-08 · ChatGPT 对话", kind: "深度访谈", quote: "我现在更相信：一边走一边校准，比停在原地等一个确定的方向更接近我想要的生活。" },
+    ],
+    values: [
+      { when: "2021 · 日历", kind: "日历", quote: "即便在最忙的阶段，独立项目仍被一次次排进周末——创造对你不是消遣。" },
+      { when: "2026-03 · ChatGPT 对话", kind: "深度访谈", quote: "“最不愿意牺牲的三件事”：创造的空间、自主安排时间、能说真话的关系。" },
+      { when: "2026-08 · 写作草稿", kind: "作品", quote: "我写：真实感比看起来正确更重要。" },
+    ],
+    world: [
+      { when: "2026-05 · 写作草稿", kind: "作品", quote: "现实确实有边界，但边界是可以被试探的——一次只推一点点。" },
+      { when: "2026-06 · ChatGPT 对话", kind: "深度访谈", quote: "我不再等待“彻底想清楚”，而是把换一种活法拆成三个月的实验。" },
+      { when: "2026-08 · 日记", kind: "用户回忆", quote: "连续几个周末做小实验之后发现：原来以为的“不可能”，很多只是还没试过。" },
+    ],
+  },
+  en: {
+    life: [
+      { when: "2012 · Journal", kind: "Memory", quote: "The first taste of expressing myself showed me answers are made by acting, not handed over by others." },
+      { when: "Feb 2026 · ChatGPT", kind: "Interview", quote: "After missing the promotion I admitted: I'd been hunting for one right answer that may not exist." },
+      { when: "Aug 2026 · ChatGPT", kind: "Interview", quote: "I trust now that calibrating as I go beats waiting still for a direction that feels certain." },
+    ],
+    values: [
+      { when: "2021 · Calendar", kind: "Calendar", quote: "Even in the busiest stretch, independent projects kept finding their way into weekends—making isn't a hobby for you." },
+      { when: "Mar 2026 · ChatGPT", kind: "Interview", quote: "The three things I refuse to sacrifice: room to create, control of my time, relationships where I can tell the truth." },
+      { when: "Aug 2026 · Draft", kind: "Writing", quote: "I wrote: feeling real matters more than looking correct." },
+    ],
+    world: [
+      { when: "May 2026 · Draft", kind: "Writing", quote: "Constraints are real, but edges can be tested—push them a little at a time." },
+      { when: "Jun 2026 · ChatGPT", kind: "Interview", quote: "I stopped waiting to have everything figured out, and turned another way of living into a three-month experiment." },
+      { when: "Aug 2026 · Journal", kind: "Memory", quote: "After several weekends of small experiments: much of what I called impossible was simply untried." },
+    ],
+  },
+};
+
+const patternEvidence: Record<Lang, EvidenceItem[][]> = {
+  zh: [
+    [
+      { when: "2021-03 · ChatGPT 对话", kind: "深度访谈", quote: "接下一个不确定的项目时，我第一反应是“多做一点、做得够好，大家就会认可我”。" },
+      { when: "2021-12 · 日记", kind: "用户回忆", quote: "拿到认可的那晚很安心，但第三天又开始怀疑：下一次还能不能拿到。" },
+      { when: "2026-02 · ChatGPT 对话", kind: "深度访谈", quote: "没有外部反馈的时候，我会用更多工作来对抗那种不确定感。" },
+    ],
+    [
+      { when: "2023 · 同事反馈", kind: "用户回忆", quote: "团队里大家总说：你永远最后一个说自己需求的人。" },
+      { when: "2023-12 · 年终复盘", kind: "用户回忆", quote: "复盘里我写道：共情让我成为可靠的伙伴，也让我习惯先解释别人、再照顾自己。" },
+      { when: "2026-08 · ChatGPT 对话", kind: "深度访谈", quote: "我会下意识替别人找理由，哪怕那意味着延后自己的需要。" },
+    ],
+    [
+      { when: "2026-06 · 写作记录", kind: "作品", quote: "开始每周公开一段自己的文字，不再等它“足够好”。" },
+      { when: "2026-07 · ChatGPT 对话", kind: "深度访谈", quote: "最近描述满足感时，我不再说“做到了什么”，而更多说“创造了什么、和谁真实地待在一起”。" },
+      { when: "2026-08 · 日历", kind: "日历", quote: "过去两个月，个人项目与真实社交首次稳定地出现在每周安排里。" },
+    ],
+  ],
+  en: [
+    [
+      { when: "Mar 2021 · ChatGPT", kind: "Interview", quote: "Facing an uncertain project, my first reflex: do more, do it well enough, and everyone will approve of me." },
+      { when: "Dec 2021 · Journal", kind: "Memory", quote: "The night I got approval I felt calm; by day three the doubt returned—would I get it again?" },
+      { when: "Feb 2026 · ChatGPT", kind: "Interview", quote: "Without outside feedback, I fight the uncertainty with more work." },
+    ],
+    [
+      { when: "2023 · Colleague feedback", kind: "Memory", quote: "The team always said: you're the last person to ask for anything for yourself." },
+      { when: "Dec 2023 · Review", kind: "Memory", quote: "In my review I wrote: empathy makes me dependable, and also makes me explain others first, then myself." },
+      { when: "Aug 2026 · ChatGPT", kind: "Interview", quote: "I make excuses for others automatically, even when it postpones my own needs." },
+    ],
+    [
+      { when: "Jun 2026 · Writing log", kind: "Writing", quote: "I started publishing a piece of my own writing weekly, without waiting for it to be good enough." },
+      { when: "Jul 2026 · ChatGPT", kind: "Interview", quote: "Recently I describe fulfillment less as what I achieved, more as what I made and who I spent real time with." },
+      { when: "Aug 2026 · Calendar", kind: "Calendar", quote: "For two months, personal projects and honest company have shown up steadily in my weekly plans." },
+    ],
+  ],
+};
+
+/* ------------------------------------------------------------------ */
 /* 组件                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -185,6 +330,9 @@ export default function Home() {
   const [eventDraft, setEventDraft] = useState<LifeEventDraft | null>(null);
   const [eventSummary, setEventSummary] = useState("");
   const [reviewing, setReviewing] = useState(false);
+
+  /* 支撑证据抽屉（人生之书中所有“结论”旁可点击打开） */
+  const [evidence, setEvidence] = useState<EvidencePack | null>(null);
 
   const isZh = lang === "zh";
   const conversation = sessions[lang][activeId] ?? seedHistories[lang][0];
@@ -404,8 +552,10 @@ export default function Home() {
           setBeliefs={applyBeliefs}
           addedEvents={addedEvents}
           addEvent={openEventModal}
+          onEvidence={setEvidence}
         />
       )}
+      {evidence && <EvidenceDrawer lang={lang} pack={evidence} close={() => setEvidence(null)} />}
       {eventOpen && (
         <EventModal
           lang={lang}
@@ -679,12 +829,13 @@ function Chat({
 /* ============================= 人生之书 ============================= */
 
 function Book({
-  lang, toggle, home, chat, chapter, setChapter, beliefs, setBeliefs, addedEvents, addEvent,
+  lang, toggle, home, chat, chapter, setChapter, beliefs, setBeliefs, addedEvents, addEvent, onEvidence,
 }: {
   lang: Lang; toggle: () => void; home: () => void; chat: () => void;
   chapter: Chapter; setChapter: (c: Chapter) => void;
   beliefs: BeliefInsight[]; setBeliefs: (b: BeliefInsight[]) => void;
   addedEvents: ConfirmedLifeEvent[]; addEvent: () => void;
+  onEvidence: (p: EvidencePack) => void;
 }) {
   const z = lang === "zh";
   const nav: Chapter[] = ["past", "self", "now", "future"];
@@ -733,8 +884,8 @@ function Book({
         </aside>
 
         <section className="book-page">
-          {chapter === "past" && <Past lang={lang} addedEvents={addedEvents} addEvent={addEvent} next={() => setChapter("self")} />}
-          {chapter === "self" && <Self lang={lang} beliefs={beliefs} setBeliefs={setBeliefs} />}
+          {chapter === "past" && <Past lang={lang} addedEvents={addedEvents} addEvent={addEvent} next={() => setChapter("self")} onEvidence={onEvidence} />}
+          {chapter === "self" && <Self lang={lang} beliefs={beliefs} setBeliefs={setBeliefs} onEvidence={onEvidence} />}
           {chapter === "now" && <Now lang={lang} />}
           {chapter === "future" && <Future lang={lang} plan={() => setChapter("plan")} />}
           {chapter === "plan" && <ActionPlan lang={lang} back={() => setChapter("future")} />}
@@ -746,8 +897,9 @@ function Book({
 
 /* ----- 第一章：我从哪里来 · 我的人生编年表 ----- */
 
-function Past({ lang, addedEvents, addEvent, next }: {
+function Past({ lang, addedEvents, addEvent, next, onEvidence }: {
   lang: Lang; addedEvents: ConfirmedLifeEvent[]; addEvent: () => void; next: () => void;
+  onEvidence: (p: EvidencePack) => void;
 }) {
   const z = lang === "zh";
   const stages = baseTimeline[lang];
@@ -780,7 +932,22 @@ function Past({ lang, addedEvents, addEvent, next }: {
               <small>{s[1]} · {s[4]}</small>
               <h3>{s[2]}</h3>
               <p>{s[3]}</p>
-              <span>{s[5]}</span>
+              <span className="node-chips">
+                <em>{s[5]}</em>
+                <button
+                  type="button"
+                  className="evidence-chip"
+                  onClick={() =>
+                    onEvidence({
+                      title: s[2],
+                      meta: `${s[0]} · ${s[1]} · ${s[4]}`,
+                      items: nodeEvidence[lang][i],
+                    })
+                  }
+                >
+                  ✦ {z ? "看证据" : "Evidence"}
+                </button>
+              </span>
             </div>
           </article>
         ))}
@@ -792,7 +959,31 @@ function Past({ lang, addedEvents, addEvent, next }: {
               <small>{z ? "由你补充 · 已确认" : "ADDED BY YOU · CONFIRMED"}</small>
               <h3>{e.event}</h3>
               <p>{e.aiSummary}</p>
-              <span>{e.source || (z ? "个人记录" : "Personal note")}</span>
+              <span className="node-chips">
+                <em>{e.source || (z ? "个人记录" : "Personal note")}</em>
+                <button
+                  type="button"
+                  className="evidence-chip"
+                  onClick={() =>
+                    onEvidence({
+                      title: e.event,
+                      meta: `${e.date} · ${z ? "由你补充" : "Added by you"}`,
+                      items: [
+                        {
+                          when: e.date,
+                          kind: z ? "由你补充" : "Added by you",
+                          quote: `${e.event}${e.feeling ? `。${z ? "当时感受：" : "How it felt: "}${e.feeling}` : ""}`,
+                          note: z
+                            ? "你本人补充的事件，经 AI 复述确认后写入编年表。原始资料（日记/照片等）可之后补传。"
+                            : "An event you added yourself, confirmed after AI review. Original materials can be attached later.",
+                        },
+                      ],
+                    })
+                  }
+                >
+                  ✦ {z ? "看证据" : "Evidence"}
+                </button>
+              </span>
             </div>
           </article>
         ))}
@@ -807,8 +998,9 @@ function Past({ lang, addedEvents, addEvent, next }: {
 
 /* ----- 第二章：我是谁 ----- */
 
-function Self({ lang, beliefs, setBeliefs }: {
+function Self({ lang, beliefs, setBeliefs, onEvidence }: {
   lang: Lang; beliefs: BeliefInsight[]; setBeliefs: (b: BeliefInsight[]) => void;
+  onEvidence: (p: EvidencePack) => void;
 }) {
   const z = lang === "zh";
   const patterns = z
@@ -851,6 +1043,19 @@ function Self({ lang, beliefs, setBeliefs }: {
               <small>{b.title}</small>
               <h3>{b.content}</h3>
               <p>{b.source} · {b.evidenceCount}{z ? " 条证据" : " sources"}</p>
+              <button
+                type="button"
+                className="evidence-chip"
+                onClick={() =>
+                  onEvidence({
+                    title: `${b.title} · ${z ? "证据" : "Evidence"}`,
+                    meta: `${b.source} · ${b.evidenceCount} ${z ? "条" : "sources"}`,
+                    items: beliefEvidence[lang][b.kind] ?? [],
+                  })
+                }
+              >
+                ✦ {z ? "看证据" : "Evidence"}
+              </button>
               <div>
                 <button className={b.feedback === "confirmed" ? "selected" : ""} onClick={() => feedback(b.id, "confirmed")}>
                   ✓ {z ? "符合我" : "Feels true"}
@@ -881,7 +1086,19 @@ function Self({ lang, beliefs, setBeliefs }: {
               <h3>{p[1]}</h3>
               <p>{p[2]}</p>
             </div>
-            <button>{p[3]} ↗</button>
+            <button
+              type="button"
+              className="evidence-chip"
+              onClick={() =>
+                onEvidence({
+                  title: p[1],
+                  meta: `${p[0]} · ${p[3]}`,
+                  items: patternEvidence[lang][i],
+                })
+              }
+            >
+              ✦ {p[3]} ↗
+            </button>
           </article>
         ))}
       </section>
@@ -1101,6 +1318,54 @@ function EventModal({
           </>
         )}
       </section>
+    </div>
+  );
+}
+
+/* -------------------- 支撑证据抽屉（右侧滑出） -------------------- */
+
+function EvidenceDrawer({ lang, pack, close }: {
+  lang: Lang; pack: EvidencePack; close: () => void;
+}) {
+  const z = lang === "zh";
+  return (
+    <div className="ev-wrap" role="dialog" aria-modal="true" aria-label={z ? "支撑证据" : "Supporting evidence"}>
+      <button className="ev-shade" onClick={close} aria-label={z ? "关闭" : "Close"}></button>
+      <aside className="ev-drawer">
+        <div className="ev-head">
+          <div>
+            <p className="eyebrow">{z ? "支撑证据" : "SUPPORTING EVIDENCE"}</p>
+            <h2>{pack.title}</h2>
+            {pack.meta && <small>{pack.meta}</small>}
+          </div>
+          <button className="ev-x" onClick={close} aria-label={z ? "关闭" : "Close"}>×</button>
+        </div>
+        <p className="ev-lede">
+          {z
+            ? "这一部分不是凭空得出的。下面是从你过去的记录里找到的支撑材料。"
+            : "This conclusion didn't come from nowhere. Below are the records behind it."}
+        </p>
+        <div className="ev-list">
+          {pack.items.map((it, i) => (
+            <article key={`${it.when}-${i}`}>
+              <p className="ev-meta">
+                <b>{it.kind}</b>
+                <time>{it.when}</time>
+              </p>
+              <blockquote>{it.quote}</blockquote>
+              {it.note && <p className="ev-note">{it.note}</p>}
+            </article>
+          ))}
+          {pack.items.length === 0 && (
+            <p className="ev-empty">{z ? "还没有找到对应的支撑记录——可以之后补充。" : "No supporting records found yet—you can add some later."}</p>
+          )}
+        </div>
+        <footer className="ev-foot">
+          {z
+            ? "演示环境：以上为与林晓故事一致的示例摘录，非真实隐私数据；正式版中每一处结论都可追溯到原始记录，并允许你纠正。"
+            : "Demo: excerpts consistent with Lin Xiao's story, not real private data. In production every claim traces back to source records you can correct."}
+        </footer>
+      </aside>
     </div>
   );
 }

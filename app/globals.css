@@ -30,3 +30,33 @@
 .missing-feeling input{width:100%;border:1px solid var(--line);background:#faf8f2;padding:10px;outline:0;box-sizing:border-box}
 @media(max-width:900px){.chapter-pills{display:flex;gap:4px;overflow-x:auto;padding:10px 16px;border-bottom:1px solid var(--line);position:sticky;top:76px;background:var(--paper);z-index:3;align-items:center;scrollbar-width:none}.chapter-pills::-webkit-scrollbar{display:none}.chapter-pills button{flex:0 0 auto;border:0;background:none;font-size:10px;padding:8px 10px;white-space:nowrap;border-bottom:2px solid transparent;color:var(--muted)}.chapter-pills button span{font-size:8px;margin-right:6px;color:var(--red)}.chapter-pills button.active{border-color:var(--red);color:var(--ink);font-weight:700}.book-page{padding-top:26px}}
 @media(max-width:620px){.history-panel{width:min(320px,88vw)}.chapter-pills{top:66px}.insight-candidate h3{font-size:17px}}
+
+/* ---- 证据控件与右侧证据抽屉 ---- */
+.evidence-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--paper);padding:4px 10px;font-size:8px;letter-spacing:.4px;color:var(--muted);cursor:pointer;border-radius:20px;transition:border-color .15s,color .15s;line-height:1.6}
+.evidence-chip:hover{border-color:var(--red);color:var(--red);background:#fff}
+.evidence-chip:active{transform:translateY(1px)}
+.long-timeline .node-chips{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:0;padding:0;background:none;margin-top:2px}
+.long-timeline .node-chips em{font-style:normal;font-size:8px;border:1px solid var(--line);padding:4px 7px}
+.long-timeline .node-chips .evidence-chip{font-size:8px}
+.belief-grid article>.evidence-chip{margin:2px 0 14px}
+.patterns article .evidence-chip{align-self:center}
+.ev-wrap{position:fixed;inset:0;z-index:25}
+.ev-shade{position:absolute;inset:0;width:100%;border:0;background:rgba(16,24,32,.4);cursor:default}
+.ev-drawer{position:absolute;right:0;top:0;bottom:0;width:min(560px,96vw);background:var(--paper);box-shadow:-18px 0 50px rgba(16,24,32,.18);display:flex;flex-direction:column;animation:evSlide .28s ease}
+@keyframes evSlide{from{transform:translateX(42px);opacity:0}}
+.ev-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;padding:44px 42px 0;border-bottom:1px solid var(--ink)}
+.ev-head h2{font-size:26px;margin:12px 0 6px;letter-spacing:-1px;line-height:1.3}
+.ev-head small{font-size:9px;color:var(--muted)}
+.ev-x{border:1px solid var(--line);background:none;width:34px;height:34px;border-radius:50%;font-size:19px;flex:none;cursor:pointer}
+.ev-lede{font:400 13px/1.7 Georgia,"Songti SC",serif;color:var(--muted);padding:20px 42px 4px;margin:0}
+.ev-list{flex:1;overflow:auto;padding:16px 42px 30px}
+.ev-list article{padding:22px 0;border-bottom:1px solid var(--line)}
+.ev-list article:first-child{border-top:1px solid var(--line)}
+.ev-meta{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 12px;font-size:8px;letter-spacing:1.1px}
+.ev-meta b{color:var(--red);font-weight:700}
+.ev-meta time{color:var(--muted)}
+.ev-list blockquote{margin:0;font:400 16px/1.8 Georgia,"Songti SC",serif;padding-left:14px;border-left:3px solid var(--red)}
+.ev-note{font-size:10px;color:var(--muted);line-height:1.7;margin:12px 0 0;background:var(--soft);padding:9px 12px}
+.ev-empty{padding:22px;text-align:center;font-size:11px;color:var(--muted);background:var(--soft)}
+.ev-foot{font-size:9px;line-height:1.7;color:var(--muted);padding:16px 42px;border-top:1px solid var(--line)}
+@media(max-width:620px){.ev-head{padding:34px 22px 0}.ev-lede{padding:16px 22px 4px}.ev-list{padding:14px 22px 24px}.ev-foot{padding:14px 22px}.patterns article .evidence-chip{grid-column:2;justify-self:start}}
